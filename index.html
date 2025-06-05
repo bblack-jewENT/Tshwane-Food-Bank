@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Food Parcel Tracker</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css"/>
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #f5f8fa;
+      color: #333;
+    }
+
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 30px;
+      text-align: center;
+      font-size: 1.5em;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    .section {
+      background: white;
+      padding: 25px;
+      margin-bottom: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-size: 1.2em;
+    }
+
+    input[type="text"],
+    textarea,
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #2980b9;
+      color: white;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #1c5d85;
+    }
+
+    #qr-reader {
+      max-width: 400px;
+      margin: 20px auto;
+    }
+
+    #client-info, #scan-result, #log-display {
+      padding: 10px;
+      background-color: #ecf0f1;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      background-color: #f0f0f0;
+      font-size: 14px;
+      color: #555;
+      margin-top: 30px;
+    }
+
+    #log-display {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Food Parcel QR Tracker</h1>
+  </header>
+
+  <div class="container">
+    <div class="section">
+      <h2>1. Sign In</h2>
+      <input type="text" id="username" placeholder="Enter your staff username" />
+      <button onclick="signIn()">Sign In</button>
+    </div>
+
+    <div class="section">
+      <h2>2. Scan QR Code</h2>
+      <div id="qr-reader"></div>
+      <div id="scan-result"></div>
+    </div>
+
+    <div class="section">
+      <h2>3. Client Info</h2>
+      <div id="client-info">Scan a QR code to see client data.</div>
+    </div>
+
+    <div class="section">
+      <h2>4. Submit Feedback</h2>
+      <textarea id="feedback" placeholder="Client concerns or comments..."></textarea>
+      <button onclick="submitFeedback()">Submit</button>
+    </div>
+
+    <div class="section">
+      <h2>5. View Logs</h2>
+      <button onclick="toggleLogs()">View Logs</button>
+      <div id="log-display"></div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Staff Portal
+  </footer>
+
+  <script>
+    const database = {
+      'qr123': {
+        name: 'John Doe',
+        age: 34,
+        location: 'Township A',
+        received: false,
+      },
+      'qr456': {
+        name: 'Sarah Moyo',
+        age: 29,
+        location: 'Township B',
+        received: true,
+      },
+    };
+
+    function signIn() {
+      const username = document.getElementById('username').value;
+      if (username.trim()) {
+        localStorage.setItem('staffUser', username);
+        alert(`Welcome, ${username}`);
+      }
+    }
+
+    function showClientData(qrCode) {
+      const client = database[qrCode];
+      if (client) {
+        client.received = true;
+        localStorage.setItem(`client-${qrCode}`, JSON.stringify(client));
+        document.getElementById('client-info').innerHTML = `
+          <strong>Name:</strong> ${client.name}<br>
+          <strong>Age:</strong> ${client.age}<br>
+          <strong>Location:</strong> ${client.location}<br>
+          <strong>Parcel Received:</strong> ${client.received ? 'Yes' : 'No'}<br>
+        `;
+      } else {
+        document.getElementById('client-info').innerText = 'Client not found in system.';
+      }
+    }
+
+    function submitFeedback() {
+      const feedback = document.getElementById('feedback').value.trim();
+      const qrCode = document.getElementById('scan-result').innerText.split(': ')[1];
+      if (feedback && qrCode) {
+        const feedbackLog = {
+          staff: localStorage.getItem('staffUser'),
+          qrCode,
+          feedback,
+          timestamp: new Date().toISOString()
+        };
+        let feedbacks = JSON.parse(localStorage.getItem('clientFeedbacks') || '[]');
+        feedbacks.push(feedbackLog);
+        localStorage.setItem('clientFeedbacks', JSON.stringify(feedbacks));
+        alert('Feedback submitted.');
+        document.getElementById('feedback').value = '';
+      }
+    }
+
+    function logParcel(qrCode) {
+      const username = localStorage.getItem('staffUser') || 'Unknown';
+      const timestamp = new Date().toISOString();
+      const log = { qrCode, username, timestamp };
+
+      let logs = JSON.parse(localStorage.getItem('parcelLogs') || '[]');
+      logs.push(log);
+      localStorage.setItem('parcelLogs', JSON.stringify(logs));
+    }
+
+    function toggleLogs() {
+      const logDiv = document.getElementById('log-display');
+      if (logDiv.style.display === 'none' || logDiv.style.display === '') {
+        viewLogs();
+        logDiv.style.display = 'block';
+      } else {
+        logDiv.style.display = 'none';
+      }
+    }
+
+    function viewLogs() {
+      const logs = JSON.parse(localStorage.getItem('parcelLogs') || '[]');
+      const feedbacks = JSON.parse(localStorage.getItem('clientFeedbacks') || '[]');
+      let html = '<h3>Scan Logs:</h3>';
+      logs.forEach(log => {
+        html += `<p>${log.timestamp} - ${log.username} scanned ${log.qrCode}</p>`;
+      });
+
+      html += '<h3>Feedback Logs:</h3>';
+      feedbacks.forEach(fb => {
+        html += `<p>${fb.timestamp} - ${fb.staff} feedback on ${fb.qrCode}: ${fb.feedback}</p>`;
+      });
+
+      document.getElementById('log-display').innerHTML = html;
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      document.getElementById('scan-result').innerText = `QR Code Scanned: ${decodedText}`;
+      showClientData(decodedText);
+      logParcel(decodedText);
+    }
+
+    window.addEventListener('load', () => {
+      const username = localStorage.getItem('staffUser');
+      if (username) {
+        document.getElementById('username').value = username;
+      }
+
+      const qrScanner = new Html5Qrcode("qr-reader");
+      qrScanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        onScanSuccess
+      ).catch(err => {
+        console.error('QR scanner failed:', err);
+      });
+    });
+  </script>
+</body>
+</html>
